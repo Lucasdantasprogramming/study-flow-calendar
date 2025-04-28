@@ -1,11 +1,12 @@
 
 import { useState } from "react";
-import { format, addMonths, subMonths, isToday, isSameMonth, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays } from "date-fns";
+import { format, addMonths, subMonths, isToday, isSameMonth, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useTasks } from "@/context/TasksContext";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlarmClock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CalendarViewProps {
   onSelectDate: (date: Date) => void;
@@ -57,6 +58,35 @@ export const CalendarView = ({ onSelectDate, selectedDate }: CalendarViewProps) 
     );
   };
 
+  // Calcula o tempo total de estudo para um dia específico
+  const calculateStudyTimeForDay = (day: Date): number => {
+    const dateFormatted = format(day, "yyyy-MM-dd");
+    const tasksForDay = tasks.filter(
+      task => format(new Date(task.date), "yyyy-MM-dd") === dateFormatted
+    );
+    
+    // Se temos duração definida, usamos a soma, senão estimamos 60 minutos por tarefa
+    return tasksForDay.reduce((total, task) => 
+      total + (task.duration || 60), 0);
+  };
+
+  // Determina a cor de fundo baseado no número de tarefas e sua prioridade
+  const getTasksColor = (day: Date): string => {
+    const dateFormatted = format(day, "yyyy-MM-dd");
+    const tasksForDay = tasks.filter(
+      task => format(new Date(task.date), "yyyy-MM-dd") === dateFormatted
+    );
+    
+    const hasHighPriority = tasksForDay.some(task => task.priority === "alta");
+    const hasMediumPriority = tasksForDay.some(task => task.priority === "média");
+    
+    if (hasHighPriority) return "bg-red-50 hover:bg-red-100";
+    if (hasMediumPriority) return "bg-amber-50 hover:bg-amber-100";
+    if (tasksForDay.length > 0) return "bg-blue-50 hover:bg-blue-100";
+    
+    return "";
+  };
+
   const renderCells = () => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(monthStart);
@@ -74,32 +104,46 @@ export const CalendarView = ({ onSelectDate, selectedDate }: CalendarViewProps) 
         const hasTasksForDay = tasks.some(
           task => format(new Date(task.date), "yyyy-MM-dd") === dateFormatted
         );
+        const studyTimeMinutes = calculateStudyTimeForDay(day);
+        const taskColor = getTasksColor(day);
 
         days.push(
           <div
             key={dateFormatted}
             className={cn(
-              "h-16 border p-1 transition-colors duration-200 cursor-pointer hover:bg-secondary flex flex-col",
+              "h-20 border p-1 transition-colors duration-200 cursor-pointer hover:bg-secondary flex flex-col",
               !isSameMonth(day, monthStart) && "text-gray-400 bg-gray-50",
-              isSameDay(day, selectedDate) && "border-primary",
+              isSameDay(day, selectedDate) && "border-primary border-2",
+              taskColor,
               "calendar-grid"
             )}
             onClick={() => onSelectDate(cloneDay)}
           >
-            <div
-              className={cn(
-                "text-right w-full",
-                isToday(day) && "today",
-                hasTasksForDay && "has-tasks"
-              )}
-            >
+            <div className="flex justify-between items-start">
               <span className={cn(
                 "text-sm inline-flex h-6 w-6 items-center justify-center rounded-full",
                 isToday(day) && "bg-primary text-primary-foreground font-bold"
               )}>
                 {format(day, "d")}
               </span>
+              
+              {studyTimeMinutes > 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center text-xs text-gray-600">
+                        <AlarmClock size={14} className="mr-1" />
+                        <span>{Math.floor(studyTimeMinutes / 60)}h{studyTimeMinutes % 60 > 0 ? `${studyTimeMinutes % 60}m` : ''}</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Tempo de estudo: {Math.floor(studyTimeMinutes / 60)}h{studyTimeMinutes % 60 > 0 ? ` ${studyTimeMinutes % 60}m` : ''}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
+            
             {hasTasksForDay && (
               <div className="mt-1 text-xs overflow-hidden">
                 {tasks
@@ -109,9 +153,11 @@ export const CalendarView = ({ onSelectDate, selectedDate }: CalendarViewProps) 
                     <div 
                       key={index}
                       className={cn(
-                        "truncate text-left px-1 rounded mb-1",
+                        "truncate text-left px-1 py-0.5 rounded mb-1",
                         task.completed ? "line-through text-gray-400" : "",
-                        task.postponed ? "italic" : ""
+                        task.postponed ? "italic" : "",
+                        task.priority === "alta" ? "border-l-2 border-red-400 pl-1" : 
+                        task.priority === "média" ? "border-l-2 border-amber-400 pl-1" : ""
                       )}
                     >
                       {task.title}

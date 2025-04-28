@@ -15,13 +15,18 @@ const Index = () => {
   return (
     <ProtectedRoute>
       <MainLayout>
-        <h1 className="text-3xl font-bold mb-6">Calendário de Estudos</h1>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <CalendarView 
-            onSelectDate={handleDateSelect} 
-            selectedDate={selectedDate} 
-          />
-          <TaskList selectedDate={selectedDate} />
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-3xl font-bold mb-2">Calendário de Estudos</h1>
+          <p className="text-gray-500 mb-6">
+            Organize suas tarefas e visualize seu progresso
+          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <CalendarView 
+              onSelectDate={handleDateSelect} 
+              selectedDate={selectedDate} 
+            />
+            <TaskList selectedDate={selectedDate} />
+          </div>
         </div>
       </MainLayout>
     </ProtectedRoute>

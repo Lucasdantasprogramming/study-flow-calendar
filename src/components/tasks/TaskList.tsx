@@ -7,7 +7,8 @@ import { Task } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, Clock, Plus, Trash, Edit } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Check, Clock, Plus, Trash, Edit, AlarmClock } from "lucide-react";
 import { NewTaskForm } from "./NewTaskForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -49,33 +50,94 @@ export const TaskList = ({ selectedDate }: TaskListProps) => {
     setIsAddingTask(false);
   };
 
+  // Função para determinar a cor da prioridade
+  const getPriorityColor = (priority?: "baixa" | "média" | "alta") => {
+    switch (priority) {
+      case "alta": return "bg-red-100 text-red-800 border-red-200";
+      case "média": return "bg-amber-100 text-amber-800 border-amber-200";
+      case "baixa": return "bg-green-100 text-green-800 border-green-200";
+      default: return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  // Função para formatar duração
+  const formatDuration = (minutes?: number) => {
+    if (!minutes) return "1h";
+    
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    
+    if (hours === 0) return `${mins}min`;
+    if (mins === 0) return `${hours}h`;
+    return `${hours}h${mins}min`;
+  };
+
+  // Calcular tempo total de estudo para o dia
+  const totalStudyTime = tasksForSelectedDate.reduce((total, task) => 
+    total + (task.duration || 60), 0);
+
   return (
     <div className="bg-white rounded-lg shadow-md p-4 h-full">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">
-          Conteúdo para {format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
-        </h2>
+        <div>
+          <h2 className="text-xl font-semibold">
+            Conteúdo para {format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
+          </h2>
+          {totalStudyTime > 0 && (
+            <p className="text-sm text-gray-500 flex items-center mt-1">
+              <AlarmClock size={14} className="mr-1" /> 
+              Tempo total de estudo: {Math.floor(totalStudyTime / 60)}h{totalStudyTime % 60 > 0 ? `${totalStudyTime % 60}min` : ''}
+            </p>
+          )}
+        </div>
         <Button onClick={handleAddTask} size="sm" className="flex items-center gap-1">
           <Plus size={16} /> Adicionar
         </Button>
       </div>
 
       {tasksForSelectedDate.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          Nenhum conteúdo para estudar neste dia.
+        <div className="text-center py-8 text-gray-500 border border-dashed rounded-lg">
+          <Clock className="mx-auto h-10 w-10 text-gray-400 mb-2" />
+          <p>Nenhum conteúdo para estudar neste dia.</p>
+          <Button 
+            variant="outline" 
+            onClick={handleAddTask} 
+            className="mt-4"
+            size="sm"
+          >
+            <Plus size={16} className="mr-1" /> Adicionar conteúdo
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">
           {tasksForSelectedDate.map((task) => (
             <Card key={task.id} className={cn(
-              "p-4 transition-all",
-              task.completed ? "border-green-200 bg-green-50" : "",
-              task.postponed ? "border-amber-200" : ""
+              "p-4 transition-all border-l-4",
+              task.completed ? "border-green-400 bg-green-50" : "",
+              task.postponed ? "border-amber-400" : "",
+              !task.completed && !task.postponed && task.priority === "alta" ? "border-red-400" : "",
+              !task.completed && !task.postponed && task.priority === "média" ? "border-amber-400" : "",
+              !task.completed && !task.postponed && task.priority === "baixa" ? "border-green-400" : "",
+              !task.completed && !task.postponed && !task.priority ? "border-gray-300" : ""
             )}>
               <div className="flex justify-between items-start">
                 <div className={cn("flex-1", task.completed ? "line-through text-gray-500" : "")}>
-                  <h3 className="font-medium">{task.title}</h3>
+                  <div className="flex items-start gap-2">
+                    <h3 className="font-medium">{task.title}</h3>
+                    <Badge variant="outline" className={cn(
+                      "ml-2",
+                      getPriorityColor(task.priority)
+                    )}>
+                      {task.priority || "normal"}
+                    </Badge>
+                  </div>
                   <p className="text-sm text-gray-600">{task.description}</p>
+                  {task.duration && (
+                    <p className="text-xs text-gray-500 mt-1 flex items-center">
+                      <Clock size={12} className="inline mr-1" />
+                      {formatDuration(task.duration)}
+                    </p>
+                  )}
                 </div>
                 <div className="flex space-x-2">
                   <Button

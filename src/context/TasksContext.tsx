@@ -76,6 +76,8 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
         completed: false,
         postponed: false,
         notes: '',
+        priority: 'alta',
+        duration: 90,
       },
       {
         id: '2',
@@ -85,6 +87,8 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
         completed: false,
         postponed: false,
         notes: '',
+        priority: 'média',
+        duration: 120,
       },
       {
         id: '3',
@@ -94,6 +98,8 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
         completed: false,
         postponed: false,
         notes: '',
+        priority: 'baixa',
+        duration: 60,
       },
     ];
     
