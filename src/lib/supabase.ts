@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import type { User, UserPreferences, Task, DailyScheduleItem, WeeklySchedule } from '@/types';
 

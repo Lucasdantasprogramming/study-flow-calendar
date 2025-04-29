@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../types';
-import { authService } from '@/lib/supabase';
+import { authService, supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 interface AuthContextType {
