@@ -1,13 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import type { User, UserPreferences, Task, DailyScheduleItem, WeeklySchedule } from '@/types';
+import { supabase as supabaseClient } from '@/integrations/supabase/client';
 
-// Provide default values for local development to prevent runtime errors
-// In production, these should be properly set as environment variables
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://your-project-id.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
-
-// Create a single supabase client for the entire app
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Use the Supabase client from integrations
+export const supabase = supabaseClient;
 
 // Authentication services
 export const authService = {
