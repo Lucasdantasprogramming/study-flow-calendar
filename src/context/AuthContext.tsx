@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { User } from '../types';
 import { authService, supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { useMockData } from '@/lib/environment';
+import { mockCurrentUser } from '@/lib/mockData';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -41,6 +43,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const checkUser = async () => {
       try {
         setLoading(true);
+        
+        if (useMockData) {
+          console.log('Using mock user data in development mode');
+          setCurrentUser(mockCurrentUser);
+          setLoading(false);
+          return;
+        }
+        
         const user = await authService.getCurrentUser();
         setCurrentUser(user);
       } catch (err) {
@@ -53,26 +63,39 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     checkUser();
     
     // Set up auth state listener
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          const user = await authService.getCurrentUser();
-          setCurrentUser(user);
-        } else if (event === 'SIGNED_OUT') {
-          setCurrentUser(null);
+    if (!useMockData) {
+      const { data: authListener } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            const user = await authService.getCurrentUser();
+            setCurrentUser(user);
+          } else if (event === 'SIGNED_OUT') {
+            setCurrentUser(null);
+          }
         }
-      }
-    );
-    
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
+      );
+      
+      return () => {
+        authListener?.subscription.unsubscribe();
+      };
+    }
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
       setError(null);
+      
+      if (useMockData) {
+        // Simulate login in development mode
+        setTimeout(() => {
+          setCurrentUser(mockCurrentUser);
+          toast.success('Login realizado com sucesso!');
+          navigate('/');
+        }, 800);
+        return;
+      }
+      
       await authService.login(email, password);
       const user = await authService.getCurrentUser();
       setCurrentUser(user);
@@ -90,6 +113,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setLoading(true);
       setError(null);
+      
+      if (useMockData) {
+        // Simulate Google login in development mode
+        setTimeout(() => {
+          setCurrentUser(mockCurrentUser);
+          toast.success('Login com Google realizado com sucesso!');
+          navigate('/');
+        }, 800);
+        return;
+      }
+      
       await authService.loginWithGoogle();
       // Auth state listener will handle setting the user
     } catch (err: any) {
@@ -104,6 +138,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setLoading(true);
       setError(null);
+      
+      if (useMockData) {
+        // Simulate signup in development mode
+        setTimeout(() => {
+          toast.success('Conta criada com sucesso! Por favor, verifique seu email.');
+          navigate('/login');
+        }, 800);
+        return;
+      }
+      
       await authService.signup(email, password, name);
       toast.success('Conta criada com sucesso! Por favor, verifique seu email.');
       navigate('/login');
@@ -118,6 +162,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const logout = async () => {
     try {
       setLoading(true);
+      
+      if (useMockData) {
+        // Simulate logout in development mode
+        setTimeout(() => {
+          setCurrentUser(null);
+          toast.success('Logout realizado com sucesso!');
+          navigate('/login');
+        }, 500);
+        return;
+      }
+      
       await authService.logout();
       setCurrentUser(null);
       toast.success('Logout realizado com sucesso!');
@@ -132,6 +187,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   
   const updateProfile = async (updates: Partial<User>) => {
     try {
+      if (useMockData) {
+        // Simulate profile update in development mode
+        setCurrentUser(prev => prev ? { ...prev, ...updates } : null);
+        toast.success('Perfil atualizado com sucesso!');
+        return;
+      }
+      
       if (!currentUser?.id) return;
       await authService.updateProfile(currentUser.id, updates);
       setCurrentUser(prev => prev ? { ...prev, ...updates } : null);

@@ -1,10 +1,11 @@
+
 import { createClient } from '@supabase/supabase-js';
 import type { User, UserPreferences, Task, DailyScheduleItem, WeeklySchedule } from '@/types';
 
-// These would be stored as environment variables in a real app
-// For Lovable, we need to use them directly
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Provide default values for local development to prevent runtime errors
+// In production, these should be properly set as environment variables
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://your-project-id.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
 
 // Create a single supabase client for the entire app
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -13,23 +14,28 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 export const authService = {
   // Get current user
   getCurrentUser: async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
 
-    // Fetch user profile information
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+      // Fetch user profile information
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    return {
-      id: user.id,
-      email: user.email || '',
-      name: profile?.name || user.email?.split('@')[0] || '',
-      photoURL: profile?.avatar_url || user.user_metadata?.avatar_url,
-      preferences: profile?.preferences as UserPreferences | undefined,
-    } as User;
+      return {
+        id: user.id,
+        email: user.email || '',
+        name: profile?.name || user.email?.split('@')[0] || '',
+        photoURL: profile?.avatar_url || user.user_metadata?.avatar_url,
+        preferences: profile?.preferences as UserPreferences | undefined,
+      } as User;
+    } catch (error) {
+      console.error("Error getting current user:", error);
+      return null;
+    }
   },
 
   // Login with email and password
@@ -109,30 +115,37 @@ export const authService = {
 export const taskService = {
   // Get all tasks for a user
   getTasks: async (userId: string) => {
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('user_id', userId)
-      .order('date', { ascending: true });
-    
-    if (error) throw new Error(error.message);
-    
-    // Convert dates back to Date objects
-    return data.map(task => ({
-      ...task,
-      date: new Date(task.date),
-    })) as Task[];
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', userId)
+        .order('date', { ascending: true });
+      
+      if (error) throw new Error(error.message);
+      
+      // Convert dates back to Date objects
+      return data.map(task => ({
+        ...task,
+        date: new Date(task.date),
+      })) as Task[];
+    } catch (error) {
+      console.error("Error getting tasks:", error);
+      return [];
+    }
   },
 
   // Add new task
   addTask: async (userId: string, task: Omit<Task, 'id'>) => {
+    const taskToInsert = {
+      ...task,
+      user_id: userId,
+      date: task.date.toISOString(),
+    };
+
     const { data, error } = await supabase
       .from('tasks')
-      .insert({
-        ...task,
-        user_id: userId,
-        date: task.date.toISOString(),
-      })
+      .insert(taskToInsert)
       .select()
       .single();
     
@@ -178,30 +191,35 @@ export const taskService = {
 export const scheduleService = {
   // Get user's weekly schedule
   getWeeklySchedule: async (userId: string): Promise<WeeklySchedule> => {
-    const { data, error } = await supabase
-      .from('schedule_items')
-      .select('*')
-      .eq('user_id', userId);
-    
-    if (error) throw new Error(error.message);
-    
-    // Group by day of week
-    const schedule: WeeklySchedule = {};
-    
-    data.forEach((item: DailyScheduleItem & { user_id: string }) => {
-      if (item.dayOfWeek) {
-        item.dayOfWeek.forEach(day => {
-          if (!schedule[day]) {
-            schedule[day] = [];
-          }
-          
-          const { user_id, ...scheduleItem } = item;
-          schedule[day].push(scheduleItem as DailyScheduleItem);
-        });
-      }
-    });
-    
-    return schedule;
+    try {
+      const { data, error } = await supabase
+        .from('schedule_items')
+        .select('*')
+        .eq('user_id', userId);
+      
+      if (error) throw new Error(error.message);
+      
+      // Group by day of week
+      const schedule: WeeklySchedule = {};
+      
+      data.forEach((item: DailyScheduleItem & { user_id: string }) => {
+        if (item.dayOfWeek) {
+          item.dayOfWeek.forEach(day => {
+            if (!schedule[day]) {
+              schedule[day] = [];
+            }
+            
+            const { user_id, ...scheduleItem } = item;
+            schedule[day].push(scheduleItem as DailyScheduleItem);
+          });
+        }
+      });
+      
+      return schedule;
+    } catch (error) {
+      console.error("Error getting weekly schedule:", error);
+      return {};
+    }
   },
 
   // Add schedule item

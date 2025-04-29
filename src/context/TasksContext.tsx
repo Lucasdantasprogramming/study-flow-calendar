@@ -5,6 +5,8 @@ import { useAuth } from './AuthContext';
 import { format } from 'date-fns';
 import { taskService } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { useMockData } from '@/lib/environment';
+import { mockTasks } from '@/lib/mockData';
 
 interface TasksContextType {
   tasks: Task[];
@@ -50,6 +52,14 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
 
       try {
         setLoading(true);
+        
+        if (useMockData) {
+          console.log('Using mock task data in development mode');
+          setTasks(mockTasks);
+          setLoading(false);
+          return;
+        }
+        
         const userTasks = await taskService.getTasks(currentUser.id);
         setTasks(userTasks);
       } catch (err: any) {
@@ -72,6 +82,18 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
     
     try {
       setLoading(true);
+      
+      if (useMockData) {
+        // Generate a mock task with ID for development
+        const newTask: Task = {
+          id: `mock-${Date.now()}`,
+          ...task
+        };
+        setTasks((prev) => [...prev, newTask]);
+        toast.success('Tarefa adicionada com sucesso!');
+        return;
+      }
+      
       const newTask = await taskService.addTask(currentUser.id, task);
       setTasks((prev) => [...prev, newTask]);
       toast.success('Tarefa adicionada com sucesso!');
@@ -85,6 +107,14 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
     try {
+      if (useMockData) {
+        // Update mock task in development mode
+        setTasks((prev) =>
+          prev.map((task) => (task.id === id ? { ...task, ...updates } : task))
+        );
+        return;
+      }
+      
       await taskService.updateTask(id, updates);
       setTasks((prev) =>
         prev.map((task) => (task.id === id ? { ...task, ...updates } : task))
@@ -97,6 +127,13 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
 
   const deleteTask = async (id: string) => {
     try {
+      if (useMockData) {
+        // Delete mock task in development mode
+        setTasks((prev) => prev.filter((task) => task.id !== id));
+        toast.success('Tarefa excluída com sucesso!');
+        return;
+      }
+      
       await taskService.deleteTask(id);
       setTasks((prev) => prev.filter((task) => task.id !== id));
       toast.success('Tarefa excluída com sucesso!');
@@ -112,6 +149,18 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
     
     try {
       const updatedValue = !task.completed;
+      
+      if (useMockData) {
+        // Update mock task completion status in development mode
+        setTasks((prev) =>
+          prev.map((task) =>
+            task.id === id ? { ...task, completed: updatedValue } : task
+          )
+        );
+        toast.success(updatedValue ? 'Tarefa concluída!' : 'Tarefa desmarcada como concluída.');
+        return;
+      }
+      
       await taskService.updateTask(id, { completed: updatedValue });
       setTasks((prev) =>
         prev.map((task) =>
@@ -133,6 +182,24 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
       // Postpone by 1 week
       const newDate = new Date(task.date);
       newDate.setDate(newDate.getDate() + 7);
+      
+      if (useMockData) {
+        // Update mock task date in development mode
+        setTasks((prev) =>
+          prev.map((task) => {
+            if (task.id === id) {
+              return {
+                ...task,
+                date: newDate,
+                postponed: true,
+              };
+            }
+            return task;
+          })
+        );
+        toast.success('Tarefa adiada para a próxima semana.');
+        return;
+      }
       
       await taskService.updateTask(id, { 
         date: newDate,
@@ -161,6 +228,15 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
 
   const updateTaskNotes = async (id: string, notes: string) => {
     try {
+      if (useMockData) {
+        // Update mock task notes in development mode
+        setTasks((prev) =>
+          prev.map((task) => (task.id === id ? { ...task, notes } : task))
+        );
+        toast.success('Anotações salvas com sucesso!');
+        return;
+      }
+      
       await taskService.updateTask(id, { notes });
       setTasks((prev) =>
         prev.map((task) => (task.id === id ? { ...task, notes } : task))
