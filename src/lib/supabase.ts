@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import type { User, UserPreferences, Task, DailyScheduleItem, WeeklySchedule } from '@/types';
 import { supabase as supabaseClient } from '@/integrations/supabase/client';
@@ -156,7 +157,7 @@ export const taskService = {
 
   // Update task
   updateTask: async (taskId: string, updates: Partial<Task>) => {
-    const updateData = { ...updates };
+    const updateData = { ...updates } as any;
     
     // Convert date to ISO string if it exists and is a Date object
     if (updateData.date instanceof Date) {

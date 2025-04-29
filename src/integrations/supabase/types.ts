@@ -9,7 +9,120 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          name: string | null
+          preferences: Json | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          id: string
+          name?: string | null
+          preferences?: Json | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name?: string | null
+          preferences?: Json | null
+        }
+        Relationships: []
+      }
+      schedule_items: {
+        Row: {
+          category: string | null
+          color: string | null
+          created_at: string | null
+          dayofweek: number[] | null
+          description: string | null
+          endtime: string
+          id: string
+          isrecurring: boolean | null
+          starttime: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          color?: string | null
+          created_at?: string | null
+          dayofweek?: number[] | null
+          description?: string | null
+          endtime: string
+          id?: string
+          isrecurring?: boolean | null
+          starttime: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          color?: string | null
+          created_at?: string | null
+          dayofweek?: number[] | null
+          description?: string | null
+          endtime?: string
+          id?: string
+          isrecurring?: boolean | null
+          starttime?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          category: string | null
+          completed: boolean | null
+          created_at: string | null
+          date: string
+          description: string | null
+          duration: number | null
+          id: string
+          notes: string | null
+          postponed: boolean | null
+          priority: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          completed?: boolean | null
+          created_at?: string | null
+          date: string
+          description?: string | null
+          duration?: number | null
+          id?: string
+          notes?: string | null
+          postponed?: boolean | null
+          priority?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          completed?: boolean | null
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          duration?: number | null
+          id?: string
+          notes?: string | null
+          postponed?: boolean | null
+          priority?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
