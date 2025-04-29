@@ -137,10 +137,11 @@ export const taskService = {
 
   // Add new task
   addTask: async (userId: string, task: Omit<Task, 'id'>) => {
+    // Make sure date is a string when sending to Supabase
     const taskToInsert = {
       ...task,
       user_id: userId,
-      date: task.date.toISOString(),
+      date: task.date instanceof Date ? task.date.toISOString() : task.date,
     };
 
     const { data, error } = await supabase
@@ -151,6 +152,7 @@ export const taskService = {
     
     if (error) throw new Error(error.message);
     
+    // Convert back to Date object when returning
     return {
       ...data,
       date: new Date(data.date),
@@ -161,7 +163,7 @@ export const taskService = {
   updateTask: async (taskId: string, updates: Partial<Task>) => {
     const updateData = { ...updates };
     
-    // Convert date to ISO string if it exists
+    // Convert date to ISO string if it exists and is a Date object
     if (updateData.date instanceof Date) {
       updateData.date = updateData.date.toISOString();
     }
