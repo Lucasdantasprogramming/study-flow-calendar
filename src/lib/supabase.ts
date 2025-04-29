@@ -168,12 +168,23 @@ export const taskService = {
       updateData.date = updateData.date.toISOString();
     }
     
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('tasks')
       .update(updateData)
-      .eq('id', taskId);
+      .eq('id', taskId)
+      .select()
+      .single();
     
     if (error) throw new Error(error.message);
+    
+    // Convert date back to Date object when returning
+    if (data) {
+      return {
+        ...data,
+        date: new Date(data.date),
+      } as Task;
+    }
+    
     return true;
   },
 
