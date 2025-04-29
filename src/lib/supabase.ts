@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import type { User, UserPreferences, Task, DailyScheduleItem, WeeklySchedule } from '@/types';
 
@@ -185,7 +184,7 @@ export const taskService = {
       } as Task;
     }
     
-    return true;
+    return null; // Return null if no data was returned
   },
 
   // Delete task
