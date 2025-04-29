@@ -2,18 +2,21 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Task } from '../types';
 import { useAuth } from './AuthContext';
-import { format, addWeeks } from 'date-fns';
+import { format } from 'date-fns';
+import { taskService } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 interface TasksContextType {
   tasks: Task[];
-  addTask: (task: Omit<Task, 'id'>) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
-  toggleComplete: (id: string) => void;
-  postponeTask: (id: string) => void;
-  updateTaskNotes: (id: string, notes: string) => void;
+  addTask: (task: Omit<Task, 'id'>) => Promise<void>;
+  updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+  toggleComplete: (id: string) => Promise<void>;
+  postponeTask: (id: string) => Promise<void>;
+  updateTaskNotes: (id: string, notes: string) => Promise<void>;
   getTasksByDate: (date: Date) => Task[];
   loading: boolean;
+  error: string | null;
 }
 
 const TasksContext = createContext<TasksContextType | undefined>(undefined);
@@ -33,129 +36,140 @@ interface TasksProviderProps {
 export const TasksProvider = ({ children }: TasksProviderProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { currentUser } = useAuth();
 
-  // Load tasks from localStorage on mount and when user changes
+  // Load tasks when user changes
   useEffect(() => {
-    if (currentUser) {
-      const storedTasks = localStorage.getItem(`tasks-${currentUser.id}`);
-      if (storedTasks) {
-        const parsedTasks = JSON.parse(storedTasks).map((task: any) => ({
-          ...task,
-          date: new Date(task.date),
-        }));
-        setTasks(parsedTasks);
-      } else if (tasks.length === 0) {
-        // If no tasks in storage and current task list is empty, create sample tasks
-        createSampleTasks();
+    const loadTasks = async () => {
+      if (!currentUser) {
+        setTasks([]);
+        setLoading(false);
+        return;
       }
-    } else {
-      setTasks([]);
-    }
-    setLoading(false);
+
+      try {
+        setLoading(true);
+        const userTasks = await taskService.getTasks(currentUser.id);
+        setTasks(userTasks);
+      } catch (err: any) {
+        console.error('Error loading tasks:', err);
+        setError(err.message || 'Erro ao carregar tarefas');
+        toast.error('Erro ao carregar tarefas');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTasks();
   }, [currentUser]);
 
-  // Save tasks to localStorage whenever they change
-  useEffect(() => {
-    if (currentUser && tasks.length > 0) {
-      localStorage.setItem(`tasks-${currentUser.id}`, JSON.stringify(tasks));
+  const addTask = async (task: Omit<Task, 'id'>) => {
+    if (!currentUser) {
+      toast.error('Você precisa estar logado para adicionar tarefas');
+      return;
     }
-  }, [tasks, currentUser]);
-
-  const createSampleTasks = () => {
-    const today = new Date();
-    const tomorrow = new Date();
-    tomorrow.setDate(today.getDate() + 1);
     
-    const sampleTasks: Task[] = [
-      {
-        id: '1',
-        title: 'Álgebra Linear',
-        description: 'Estudar matrizes e determinantes',
-        date: today,
-        completed: false,
-        postponed: false,
-        notes: '',
-        priority: 'alta',
-        duration: 90,
-      },
-      {
-        id: '2',
-        title: 'Física Quântica',
-        description: 'Revisar equação de Schrödinger',
-        date: today,
-        completed: false,
-        postponed: false,
-        notes: '',
-        priority: 'média',
-        duration: 120,
-      },
-      {
-        id: '3',
-        title: 'Literatura Brasileira',
-        description: 'Ler Machado de Assis - Dom Casmurro',
-        date: tomorrow,
-        completed: false,
-        postponed: false,
-        notes: '',
-        priority: 'baixa',
-        duration: 60,
-      },
-    ];
-    
-    setTasks(sampleTasks);
-    if (currentUser) {
-      localStorage.setItem(`tasks-${currentUser.id}`, JSON.stringify(sampleTasks));
+    try {
+      setLoading(true);
+      const newTask = await taskService.addTask(currentUser.id, task);
+      setTasks((prev) => [...prev, newTask]);
+      toast.success('Tarefa adicionada com sucesso!');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao adicionar tarefa');
+      toast.error(err.message || 'Erro ao adicionar tarefa');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const addTask = (task: Omit<Task, 'id'>) => {
-    const newTask: Task = {
-      ...task,
-      id: `task-${Date.now()}`,
-    };
-    setTasks((prev) => [...prev, newTask]);
+  const updateTask = async (id: string, updates: Partial<Task>) => {
+    try {
+      await taskService.updateTask(id, updates);
+      setTasks((prev) =>
+        prev.map((task) => (task.id === id ? { ...task, ...updates } : task))
+      );
+    } catch (err: any) {
+      setError(err.message || 'Erro ao atualizar tarefa');
+      toast.error(err.message || 'Erro ao atualizar tarefa');
+    }
   };
 
-  const updateTask = (id: string, updates: Partial<Task>) => {
-    setTasks((prev) =>
-      prev.map((task) => (task.id === id ? { ...task, ...updates } : task))
-    );
+  const deleteTask = async (id: string) => {
+    try {
+      await taskService.deleteTask(id);
+      setTasks((prev) => prev.filter((task) => task.id !== id));
+      toast.success('Tarefa excluída com sucesso!');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao excluir tarefa');
+      toast.error(err.message || 'Erro ao excluir tarefa');
+    }
   };
 
-  const deleteTask = (id: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
+  const toggleComplete = async (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    
+    try {
+      const updatedValue = !task.completed;
+      await taskService.updateTask(id, { completed: updatedValue });
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === id ? { ...task, completed: updatedValue } : task
+        )
+      );
+      toast.success(updatedValue ? 'Tarefa concluída!' : 'Tarefa desmarcada como concluída.');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao atualizar tarefa');
+      toast.error(err.message || 'Erro ao atualizar tarefa');
+    }
   };
 
-  const toggleComplete = (id: string) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
-    );
+  const postponeTask = async (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    
+    try {
+      // Postpone by 1 week
+      const newDate = new Date(task.date);
+      newDate.setDate(newDate.getDate() + 7);
+      
+      await taskService.updateTask(id, { 
+        date: newDate,
+        postponed: true 
+      });
+      
+      setTasks((prev) =>
+        prev.map((task) => {
+          if (task.id === id) {
+            return {
+              ...task,
+              date: newDate,
+              postponed: true,
+            };
+          }
+          return task;
+        })
+      );
+      
+      toast.success('Tarefa adiada para a próxima semana.');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao adiar tarefa');
+      toast.error(err.message || 'Erro ao adiar tarefa');
+    }
   };
 
-  const postponeTask = (id: string) => {
-    setTasks((prev) =>
-      prev.map((task) => {
-        if (task.id === id) {
-          // Postpone by 1 week
-          const newDate = addWeeks(new Date(task.date), 1);
-          return {
-            ...task,
-            date: newDate,
-            postponed: true,
-          };
-        }
-        return task;
-      })
-    );
-  };
-
-  const updateTaskNotes = (id: string, notes: string) => {
-    setTasks((prev) =>
-      prev.map((task) => (task.id === id ? { ...task, notes } : task))
-    );
+  const updateTaskNotes = async (id: string, notes: string) => {
+    try {
+      await taskService.updateTask(id, { notes });
+      setTasks((prev) =>
+        prev.map((task) => (task.id === id ? { ...task, notes } : task))
+      );
+      toast.success('Anotações salvas com sucesso!');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao salvar anotações');
+      toast.error(err.message || 'Erro ao salvar anotações');
+    }
   };
 
   const getTasksByDate = (date: Date) => {
@@ -175,6 +189,7 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
     updateTaskNotes,
     getTasksByDate,
     loading,
+    error
   };
 
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
