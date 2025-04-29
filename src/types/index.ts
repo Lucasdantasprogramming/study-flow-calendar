@@ -9,13 +9,14 @@ export interface Task {
   notes: string;
   priority?: "baixa" | "média" | "alta";
   duration?: number; // duração em minutos
+  category?: string;
 }
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  photoURL?: string;
+  photoURL?: string | null;
   preferences?: UserPreferences;
 }
 
@@ -38,6 +39,5 @@ export interface DailyScheduleItem {
 }
 
 export interface WeeklySchedule {
-  [key: string]: DailyScheduleItem[]; // "0" para domingo, "1" para segunda, etc.
+  [key: string]: DailyScheduleItem[]; // "domingo", "segunda", etc.
 }
-

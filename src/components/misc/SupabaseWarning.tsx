@@ -1,14 +1,14 @@
 
 import React from 'react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
+import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export const SupabaseWarning = () => {
   return (
     <div className="fixed bottom-4 right-4 max-w-md z-50">
       <Alert variant="destructive">
-        <ExclamationTriangleIcon className="h-4 w-4 mt-1" />
+        <AlertTriangle className="h-4 w-4 mt-1" />
         <AlertTitle>Configuração do Supabase necessária</AlertTitle>
         <AlertDescription>
           <p className="mb-2">

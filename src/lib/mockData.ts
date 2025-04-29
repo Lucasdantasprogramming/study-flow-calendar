@@ -20,10 +20,11 @@ export const mockTasks: Task[] = [
     title: 'Estudar React',
     description: 'Revisar hooks e componentes funcionais',
     date: new Date(),
-    priority: 'high',
+    priority: 'alta',
     completed: false,
+    postponed: false,
     category: 'programming',
-    timeEstimate: 120,
+    duration: 120,
     notes: 'Focar em useEffect e useState'
   },
   {
@@ -31,10 +32,11 @@ export const mockTasks: Task[] = [
     title: 'Revisar matemática',
     description: 'Capítulo 5 - Cálculo diferencial',
     date: new Date(Date.now() + 86400000), // Tomorrow
-    priority: 'medium',
+    priority: 'média',
     completed: false,
+    postponed: false,
     category: 'mathematics',
-    timeEstimate: 90,
+    duration: 90,
     notes: ''
   },
   {
@@ -42,10 +44,11 @@ export const mockTasks: Task[] = [
     title: 'Ler artigo científico',
     description: 'Machine Learning aplicado à medicina',
     date: new Date(),
-    priority: 'low',
+    priority: 'baixa',
     completed: true,
+    postponed: false,
     category: 'science',
-    timeEstimate: 45,
+    duration: 45,
     notes: 'Anotar pontos principais'
   }
 ];
@@ -58,18 +61,20 @@ export const mockSchedule: WeeklySchedule = {
       title: 'Estudar Programação',
       startTime: '08:00',
       endTime: '10:00',
-      dayOfWeek: ['segunda', 'quarta', 'sexta'],
+      dayOfWeek: [1, 3, 5],
       color: '#4CAF50',
-      description: 'Foco em React e TypeScript'
+      description: 'Foco em React e TypeScript',
+      category: 'estudo'
     },
     {
       id: '2',
       title: 'Almoço',
       startTime: '12:00',
       endTime: '13:00',
-      dayOfWeek: ['segunda', 'terça', 'quarta', 'quinta', 'sexta'],
+      dayOfWeek: [1, 2, 3, 4, 5],
       color: '#FFC107',
-      description: ''
+      description: '',
+      category: 'refeição'
     }
   ],
   terça: [
@@ -78,18 +83,20 @@ export const mockSchedule: WeeklySchedule = {
       title: 'Estudar Matemática',
       startTime: '08:00',
       endTime: '10:00',
-      dayOfWeek: ['terça', 'quinta'],
+      dayOfWeek: [2, 4],
       color: '#2196F3',
-      description: 'Revisão de cálculo'
+      description: 'Revisão de cálculo',
+      category: 'estudo'
     },
     {
       id: '2',
       title: 'Almoço',
       startTime: '12:00',
       endTime: '13:00',
-      dayOfWeek: ['segunda', 'terça', 'quarta', 'quinta', 'sexta'],
+      dayOfWeek: [1, 2, 3, 4, 5],
       color: '#FFC107',
-      description: ''
+      description: '',
+      category: 'refeição'
     }
   ],
   quarta: [
@@ -98,18 +105,20 @@ export const mockSchedule: WeeklySchedule = {
       title: 'Estudar Programação',
       startTime: '08:00',
       endTime: '10:00',
-      dayOfWeek: ['segunda', 'quarta', 'sexta'],
+      dayOfWeek: [1, 3, 5],
       color: '#4CAF50',
-      description: 'Foco em React e TypeScript'
+      description: 'Foco em React e TypeScript',
+      category: 'estudo'
     },
     {
       id: '2',
       title: 'Almoço',
       startTime: '12:00',
       endTime: '13:00',
-      dayOfWeek: ['segunda', 'terça', 'quarta', 'quinta', 'sexta'],
+      dayOfWeek: [1, 2, 3, 4, 5],
       color: '#FFC107',
-      description: ''
+      description: '',
+      category: 'refeição'
     }
   ],
   quinta: [
@@ -118,18 +127,20 @@ export const mockSchedule: WeeklySchedule = {
       title: 'Estudar Matemática',
       startTime: '08:00',
       endTime: '10:00',
-      dayOfWeek: ['terça', 'quinta'],
+      dayOfWeek: [2, 4],
       color: '#2196F3',
-      description: 'Revisão de cálculo'
+      description: 'Revisão de cálculo',
+      category: 'estudo'
     },
     {
       id: '2',
       title: 'Almoço',
       startTime: '12:00',
       endTime: '13:00',
-      dayOfWeek: ['segunda', 'terça', 'quarta', 'quinta', 'sexta'],
+      dayOfWeek: [1, 2, 3, 4, 5],
       color: '#FFC107',
-      description: ''
+      description: '',
+      category: 'refeição'
     }
   ],
   sexta: [
@@ -138,27 +149,30 @@ export const mockSchedule: WeeklySchedule = {
       title: 'Estudar Programação',
       startTime: '08:00',
       endTime: '10:00',
-      dayOfWeek: ['segunda', 'quarta', 'sexta'],
+      dayOfWeek: [1, 3, 5],
       color: '#4CAF50',
-      description: 'Foco em React e TypeScript'
+      description: 'Foco em React e TypeScript',
+      category: 'estudo'
     },
     {
       id: '2',
       title: 'Almoço',
       startTime: '12:00',
       endTime: '13:00',
-      dayOfWeek: ['segunda', 'terça', 'quarta', 'quinta', 'sexta'],
+      dayOfWeek: [1, 2, 3, 4, 5],
       color: '#FFC107',
-      description: ''
+      description: '',
+      category: 'refeição'
     },
     {
       id: '4',
       title: 'Revisão da semana',
       startTime: '16:00',
       endTime: '18:00',
-      dayOfWeek: ['sexta'],
+      dayOfWeek: [5],
       color: '#9C27B0',
-      description: 'Consolidar o aprendizado da semana'
+      description: 'Consolidar o aprendizado da semana',
+      category: 'estudo'
     }
   ],
   sábado: [
@@ -167,9 +181,10 @@ export const mockSchedule: WeeklySchedule = {
       title: 'Estudo livre',
       startTime: '10:00',
       endTime: '12:00',
-      dayOfWeek: ['sábado'],
+      dayOfWeek: [6],
       color: '#FF5722',
-      description: 'Escolher um tópico de interesse'
+      description: 'Escolher um tópico de interesse',
+      category: 'lazer'
     }
   ],
   domingo: []

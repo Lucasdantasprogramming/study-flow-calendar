@@ -205,12 +205,25 @@ export const scheduleService = {
       data.forEach((item: DailyScheduleItem & { user_id: string }) => {
         if (item.dayOfWeek) {
           item.dayOfWeek.forEach(day => {
-            if (!schedule[day]) {
-              schedule[day] = [];
+            // Convert day number to day name in Portuguese
+            let dayName: string;
+            switch (day) {
+              case 0: dayName = 'domingo'; break;
+              case 1: dayName = 'segunda'; break;
+              case 2: dayName = 'terça'; break;
+              case 3: dayName = 'quarta'; break;
+              case 4: dayName = 'quinta'; break;
+              case 5: dayName = 'sexta'; break;
+              case 6: dayName = 'sábado'; break;
+              default: dayName = 'domingo';
+            }
+            
+            if (!schedule[dayName]) {
+              schedule[dayName] = [];
             }
             
             const { user_id, ...scheduleItem } = item;
-            schedule[day].push(scheduleItem as DailyScheduleItem);
+            schedule[dayName].push(scheduleItem as DailyScheduleItem);
           });
         }
       });
