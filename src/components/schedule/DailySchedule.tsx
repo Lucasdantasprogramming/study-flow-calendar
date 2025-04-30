@@ -1,337 +1,190 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSchedule } from "@/context/ScheduleContext";
 import { DailyScheduleItem } from "@/types";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Edit, Trash, Clock, Calendar } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const DailySchedule = () => {
-  const { 
-    scheduleItems, 
-    weeklySchedule,
-    addScheduleItem, 
-    updateScheduleItem, 
-    deleteScheduleItem,
-    getScheduleForDay
-  } = useSchedule();
-  
-  const [isAddingItem, setIsAddingItem] = useState(false);
-  const [editingItem, setEditingItem] = useState<DailyScheduleItem | null>(null);
-  const [selectedDay, setSelectedDay] = useState<string>("0");
-  
-  const daysOfWeek = [
-    { value: "0", label: "Domingo" },
-    { value: "1", label: "Segunda" },
-    { value: "2", label: "Terça" },
-    { value: "3", label: "Quarta" },
-    { value: "4", label: "Quinta" },
-    { value: "5", label: "Sexta" },
-    { value: "6", label: "Sábado" }
-  ];
-  
-  const currentDayItems = getScheduleForDay(Number(selectedDay));
-  
-  // Sort schedule items by start time
-  const sortedItems = [...currentDayItems].sort((a, b) => {
-    return a.startTime.localeCompare(b.startTime);
-  });
-  
-  const handleAddItem = () => {
-    setIsAddingItem(true);
-  };
-  
-  const handleCloseDialog = () => {
-    setIsAddingItem(false);
-    setEditingItem(null);
-  };
-  
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    
-    const title = formData.get("title") as string;
-    const description = formData.get("description") as string;
-    const startTime = formData.get("startTime") as string;
-    const endTime = formData.get("endTime") as string;
-    const category = formData.get("category") as string;
-    const isRecurring = formData.has("isRecurring");
-    
-    // Obter dias selecionados
-    const selectedDays: number[] = [];
-    daysOfWeek.forEach(day => {
-      if (formData.has(`day-${day.value}`)) {
-        selectedDays.push(Number(day.value));
-      }
-    });
-    
-    const item = {
-      title,
-      description,
-      startTime,
-      endTime,
-      category,
-      isRecurring,
-      dayOfWeek: selectedDays.length > 0 ? selectedDays : [Number(selectedDay)],
-    };
-    
-    if (editingItem) {
-      updateScheduleItem(editingItem.id, item);
-    } else {
-      addScheduleItem(item);
+  const { getScheduleForDay, weeklySchedule, loading } = useSchedule();
+  const [activeTab, setActiveTab] = useState<string>("1"); // Second-feira as default
+
+  const getDayName = (day: number): string => {
+    switch (day) {
+      case 0: return "Domingo";
+      case 1: return "Segunda";
+      case 2: return "Terça";
+      case 3: return "Quarta";
+      case 4: return "Quinta";
+      case 5: return "Sexta";
+      case 6: return "Sábado";
+      default: return "Dia";
     }
-    
-    handleCloseDialog();
   };
 
-  // Gerar cores adequadas com base na categoria
-  const getCategoryColor = (category: string, isBackground = false) => {
-    if (category === "study") {
-      return isBackground ? "bg-study-purple/10" : "text-study-purple";
-    } else if (category === "break") {
-      return isBackground ? "bg-study-blue/10" : "text-study-blue";
-    } else {
-      return isBackground ? "bg-gray-100" : "text-gray-700";
+  const getTimeBlocks = (startHour: number = 6, endHour: number = 22): string[] => {
+    const blocks: string[] = [];
+    for (let hour = startHour; hour <= endHour; hour++) {
+      blocks.push(`${hour.toString().padStart(2, '0')}:00`);
+      blocks.push(`${hour.toString().padStart(2, '0')}:30`);
     }
+    return blocks;
   };
-  
-  const getCategoryBorder = (category: string) => {
-    if (category === "study") {
-      return "border-l-study-purple";
-    } else if (category === "break") {
-      return "border-l-study-blue";
-    } else {
-      return "border-l-gray-300";
-    }
+
+  const getItemPosition = (
+    item: DailyScheduleItem,
+    timeBlocks: string[]
+  ): {
+    top: number;
+    height: number;
+    color: string;
+  } => {
+    const startTime = item.startTime;
+    const endTime = item.endTime;
+
+    const startHour = parseInt(startTime.split(":")[0]);
+    const startMinute = parseInt(startTime.split(":")[1]);
+    const endHour = parseInt(endTime.split(":")[0]);
+    const endMinute = parseInt(endTime.split(":")[1]);
+
+    const timeBlockHeight = 60;
+    const minuteHeight = timeBlockHeight / 60;
+
+    const startPosition = (startHour - 6) * 60 + startMinute;
+    const endPosition = (endHour - 6) * 60 + endMinute;
+
+    const top = startPosition * minuteHeight;
+    const height = (endPosition - startPosition) * minuteHeight;
+
+    const colors: { [key: string]: string } = {
+      study: "bg-blue-100 border-blue-300 text-blue-800",
+      break: "bg-green-100 border-green-300 text-green-800",
+      exercise: "bg-purple-100 border-purple-300 text-purple-800",
+      meeting: "bg-amber-100 border-amber-300 text-amber-800",
+      default: "bg-gray-100 border-gray-300 text-gray-800",
+    };
+
+    return {
+      top,
+      height,
+      color: colors[item.category || "default"] || item.color || colors.default,
+    };
   };
-  
+
+  if (loading) {
+    return <DailyScheduleSkeleton />;
+  }
+
   return (
-    <div className="bg-white rounded-lg shadow-md p-4">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-2xl font-semibold">Cronograma Diário</h2>
-          <p className="text-gray-500 text-sm">Organize suas atividades por dia da semana</p>
-        </div>
-        <Button onClick={handleAddItem} className="flex items-center gap-1">
-          <Plus size={16} /> Adicionar Atividade
-        </Button>
-      </div>
-      
-      <Tabs value={selectedDay} onValueChange={setSelectedDay} className="mb-6">
-        <TabsList className="grid grid-cols-7 w-full">
-          {daysOfWeek.map(day => (
-            <TabsTrigger key={day.value} value={day.value} className="text-xs sm:text-sm">
-              {day.label.slice(0, 3)}
+    <div>
+      <Tabs 
+        value={activeTab} 
+        onValueChange={setActiveTab} 
+        className="w-full"
+      >
+        <TabsList className="flex w-full mb-6 overflow-x-auto">
+          {[1, 2, 3, 4, 5, 6, 0].map((day) => (
+            <TabsTrigger
+              key={day}
+              value={day.toString()}
+              className="flex-1 min-w-[100px]"
+            >
+              {getDayName(day)}
             </TabsTrigger>
           ))}
         </TabsList>
-        
-        {daysOfWeek.map(day => (
-          <TabsContent key={day.value} value={day.value} className="mt-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">{day.label} • {format(new Date().setDate(new Date().getDate() + (Number(day.value) - new Date().getDay() + 7) % 7), "dd 'de' MMMM", { locale: ptBR })}</h3>
-            </div>
-            
-            {sortedItems.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 border border-dashed rounded-lg">
-                <Calendar className="mx-auto h-10 w-10 text-gray-400 mb-2" />
-                <p className="mb-2">Nenhuma atividade para {day.label}</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleAddItem}
-                  className="mt-2"
-                >
-                  <Plus size={16} className="mr-2" /> Adicionar Atividade
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {sortedItems.map((item) => (
-                  <Card 
-                    key={item.id} 
-                    className={cn(
-                      "p-4 flex border-l-4 transition-all hover:shadow-md",
-                      getCategoryBorder(item.category)
-                    )}
-                  >
-                    <div className="mr-4 flex flex-col items-center justify-center">
-                      <Clock className="text-gray-500" size={18} />
-                      <div className="text-sm font-medium mt-1">
-                        {item.startTime}<br/>
-                        {item.endTime}
-                      </div>
-                    </div>
-                    
-                    <div className="flex-1">
-                      <h3 className="font-medium text-lg">{item.title}</h3>
-                      <p className="text-sm text-gray-600 mt-1">{item.description}</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <span className={cn(
-                          "text-xs py-1 px-2 rounded-full",
-                          getCategoryColor(item.category, true),
-                          getCategoryColor(item.category)
-                        )}>
-                          {item.category === "study" ? "Estudo" : "Pausa"}
-                        </span>
-                        
-                        {item.isRecurring && (
-                          <span className="text-xs py-1 px-2 rounded-full bg-gray-100 text-gray-700">
-                            Recorrente
-                          </span>
-                        )}
-                        
-                        {item.dayOfWeek && item.dayOfWeek.length > 1 && (
-                          <span className="text-xs py-1 px-2 rounded-full bg-amber-100 text-amber-800">
-                            {item.dayOfWeek.length} dias da semana
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col space-y-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => setEditingItem(item)}
-                      >
-                        <Edit size={16} />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => deleteScheduleItem(item.id)}
-                        className="text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash size={16} />
+
+        {[1, 2, 3, 4, 5, 6, 0].map((day) => {
+          const scheduleForDay = getScheduleForDay(day);
+          const timeBlocks = getTimeBlocks();
+
+          return (
+            <TabsContent key={day} value={day.toString()} className="relative">
+              <Card>
+                <CardContent className="pt-6">
+                  {scheduleForDay.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">
+                        Nenhuma atividade programada para {getDayName(day)}.
+                      </p>
+                      <Button className="mt-4" variant="outline">
+                        Adicionar Atividade
                       </Button>
                     </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        ))}
+                  ) : (
+                    <div className="relative min-h-[800px]">
+                      {/* Time blocks */}
+                      {timeBlocks.map((time, index) => (
+                        <div
+                          key={time}
+                          className={`absolute w-full border-t border-gray-100 flex ${
+                            index % 2 === 0 ? "font-medium" : "text-xs text-gray-400"
+                          }`}
+                          style={{ top: `${index * 30}px` }}
+                        >
+                          <div className="w-16 -mt-2.5 text-gray-500">{time}</div>
+                        </div>
+                      ))}
+
+                      {/* Schedule items */}
+                      {scheduleForDay.map((item) => {
+                        const position = getItemPosition(item, timeBlocks);
+                        return (
+                          <div
+                            key={item.id}
+                            className={`absolute left-20 right-4 rounded-md border p-2 ${position.color}`}
+                            style={{
+                              top: `${position.top}px`,
+                              height: `${position.height}px`,
+                              minHeight: "20px",
+                            }}
+                          >
+                            <h4 className="font-medium text-sm truncate">
+                              {item.title}
+                            </h4>
+                            {position.height > 40 && (
+                              <p className="text-xs truncate">
+                                {item.description}
+                              </p>
+                            )}
+                            {position.height > 60 && (
+                              <p className="text-xs font-medium mt-1">
+                                {item.startTime} - {item.endTime}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          );
+        })}
       </Tabs>
+    </div>
+  );
+};
+
+const DailyScheduleSkeleton = () => {
+  return (
+    <div>
+      <Skeleton className="h-10 w-full mb-6" />
       
-      <Dialog open={isAddingItem || !!editingItem} onOpenChange={handleCloseDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {editingItem ? "Editar Atividade" : "Adicionar Atividade"}
-            </DialogTitle>
-          </DialogHeader>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="startTime">Hora de Início</Label>
-                <Input 
-                  id="startTime" 
-                  name="startTime" 
-                  type="time" 
-                  defaultValue={editingItem?.startTime || "08:00"} 
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="endTime">Hora de Término</Label>
-                <Input 
-                  id="endTime" 
-                  name="endTime" 
-                  type="time" 
-                  defaultValue={editingItem?.endTime || "09:30"} 
-                  required
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="title">Título</Label>
-              <Input 
-                id="title" 
-                name="title" 
-                defaultValue={editingItem?.title || ""} 
-                placeholder="Ex: Matemática" 
-                required 
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea 
-                id="description" 
-                name="description" 
-                defaultValue={editingItem?.description || ""} 
-                placeholder="Detalhes sobre a atividade"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="category">Categoria</Label>
-              <Select name="category" defaultValue={editingItem?.category || "study"}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="study">Estudo</SelectItem>
-                  <SelectItem value="break">Pausa</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="isRecurring" 
-                  name="isRecurring"
-                  defaultChecked={editingItem?.isRecurring}
-                />
-                <Label htmlFor="isRecurring">Atividade recorrente</Label>
-              </div>
-              <p className="text-sm text-gray-500">
-                Atividades recorrentes aparecem nos dias selecionados abaixo
-              </p>
-            </div>
-            
-            <fieldset className="border rounded-md p-3">
-              <legend className="text-sm font-medium px-2">Dias da Semana</legend>
-              <div className="grid grid-cols-4 gap-2">
-                {daysOfWeek.map(day => (
-                  <div key={day.value} className="flex items-center space-x-2">
-                    <Checkbox 
-                      id={`day-${day.value}`} 
-                      name={`day-${day.value}`}
-                      defaultChecked={editingItem?.dayOfWeek?.includes(Number(day.value))}
-                    />
-                    <Label htmlFor={`day-${day.value}`}>{day.label.slice(0, 3)}</Label>
-                  </div>
-                ))}
-              </div>
-            </fieldset>
-            
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={handleCloseDialog}>
-                Cancelar
-              </Button>
-              <Button type="submit">
-                {editingItem ? "Salvar" : "Adicionar"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

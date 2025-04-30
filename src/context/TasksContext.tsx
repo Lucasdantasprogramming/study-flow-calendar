@@ -56,17 +56,19 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
         if (useMockData) {
           console.log('Using mock task data in development mode');
           setTasks(mockTasks);
-          setLoading(false);
+          // Importante: garantir que o loading seja finalizado mesmo com dados simulados
+          setTimeout(() => setLoading(false), 500);
           return;
         }
         
         const userTasks = await taskService.getTasks(currentUser.id);
         setTasks(userTasks);
+        setLoading(false);
       } catch (err: any) {
         console.error('Error loading tasks:', err);
         setError(err.message || 'Erro ao carregar tarefas');
         toast.error('Erro ao carregar tarefas');
-      } finally {
+        // Importante: garantir que o loading seja finalizado mesmo com erro
         setLoading(false);
       }
     };
