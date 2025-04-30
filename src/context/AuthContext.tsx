@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../types';
@@ -36,41 +35,57 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const navigate = useNavigate();
 
-  // Check if user is logged in on mount
+  // Check if user is logged in on mount - modified to prevent infinite loops
   useEffect(() => {
     const checkUser = async () => {
       try {
-        setLoading(true);
-        
         if (useMockData) {
           console.log('Using mock user data in development mode');
           setCurrentUser(mockCurrentUser);
           setLoading(false);
+          setAuthChecked(true);
           return;
         }
-        
+
+        console.log('Checking authentication status...');
         const user = await authService.getCurrentUser();
+        console.log('Auth check complete', user ? 'User found' : 'No user');
         setCurrentUser(user);
       } catch (err) {
         console.error('Error checking authentication status:', err);
+        setError('Erro ao verificar autenticação');
       } finally {
         setLoading(false);
+        setAuthChecked(true);
       }
     };
     
-    checkUser();
+    if (!authChecked) {
+      checkUser();
+    }
     
     // Set up auth state listener
     if (!useMockData) {
       const { data: authListener } = supabase.auth.onAuthStateChange(
         async (event, session) => {
+          console.log('Auth state changed:', event);
+          
           if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            const user = await authService.getCurrentUser();
-            setCurrentUser(user);
+            try {
+              setLoading(true);
+              const user = await authService.getCurrentUser();
+              setCurrentUser(user);
+            } catch (err) {
+              console.error('Error getting user after auth change:', err);
+            } finally {
+              setLoading(false);
+            }
           } else if (event === 'SIGNED_OUT') {
             setCurrentUser(null);
+            setLoading(false);
           }
         }
       );
@@ -79,7 +94,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         authListener?.subscription.unsubscribe();
       };
     }
-  }, []);
+  }, [authChecked]);
 
   const login = async (email: string, password: string) => {
     try {

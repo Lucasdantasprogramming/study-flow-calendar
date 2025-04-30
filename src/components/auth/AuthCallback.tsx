@@ -2,26 +2,36 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const AuthCallback = () => {
   const [error, setError] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        const { error } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
         
         if (error) {
+          console.error('Auth callback error:', error);
           setError(error.message);
           setTimeout(() => navigate('/login'), 3000);
-        } else {
+        } else if (data?.session) {
+          console.log('Auth successful, redirecting to dashboard');
           navigate('/dashboard');
+        } else {
+          console.error('No session found after authentication');
+          setError("Erro de autenticação: Sessão não encontrada");
+          setTimeout(() => navigate('/login'), 3000);
         }
       } catch (err: any) {
         console.error('Error in auth callback:', err);
         setError("Erro de autenticação");
         setTimeout(() => navigate('/login'), 3000);
+      } finally {
+        setProcessing(false);
       }
     };
 

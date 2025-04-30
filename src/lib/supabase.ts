@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import type { User, UserPreferences, Task, DailyScheduleItem, WeeklySchedule } from '@/types';
 import { supabase as supabaseClient } from '@/integrations/supabase/client';
@@ -12,14 +11,22 @@ export const authService = {
   getCurrentUser: async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
+      if (!user) {
+        console.log('No user found in getCurrentUser');
+        return null;
+      }
 
       // Fetch user profile information
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        throw new Error(profileError.message);
+      }
 
       return {
         id: user.id,
@@ -30,6 +37,7 @@ export const authService = {
       } as User;
     } catch (error) {
       console.error("Error getting current user:", error);
+      // Return null instead of throwing to prevent authentication loops
       return null;
     }
   },
