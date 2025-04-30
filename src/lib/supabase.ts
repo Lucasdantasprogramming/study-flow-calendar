@@ -98,7 +98,7 @@ export const authService = {
       .update({
         name: updates.name,
         avatar_url: updates.photoURL,
-        preferences: updates.preferences,
+        preferences: updates.preferences as any, // Convert UserPreferences to Json
       })
       .eq('id', id);
     
@@ -211,31 +211,45 @@ export const scheduleService = {
       // Group by day of week
       const schedule: WeeklySchedule = {};
       
-      data.forEach((item: DailyScheduleItem & { user_id: string }) => {
-        if (item.dayOfWeek) {
-          item.dayOfWeek.forEach(day => {
-            // Convert day number to day name in Portuguese
-            let dayName: string;
-            switch (day) {
-              case 0: dayName = 'domingo'; break;
-              case 1: dayName = 'segunda'; break;
-              case 2: dayName = 'terça'; break;
-              case 3: dayName = 'quarta'; break;
-              case 4: dayName = 'quinta'; break;
-              case 5: dayName = 'sexta'; break;
-              case 6: dayName = 'sábado'; break;
-              default: dayName = 'domingo';
-            }
-            
-            if (!schedule[dayName]) {
-              schedule[dayName] = [];
-            }
-            
-            const { user_id, ...scheduleItem } = item;
-            schedule[dayName].push(scheduleItem as DailyScheduleItem);
-          });
-        }
-      });
+      if (data) {
+        data.forEach((item) => {
+          if (item.dayofweek) {
+            item.dayofweek.forEach(day => {
+              // Convert day number to day name in Portuguese
+              let dayName: string;
+              switch (day) {
+                case 0: dayName = 'domingo'; break;
+                case 1: dayName = 'segunda'; break;
+                case 2: dayName = 'terça'; break;
+                case 3: dayName = 'quarta'; break;
+                case 4: dayName = 'quinta'; break;
+                case 5: dayName = 'sexta'; break;
+                case 6: dayName = 'sábado'; break;
+                default: dayName = 'domingo';
+              }
+              
+              if (!schedule[dayName]) {
+                schedule[dayName] = [];
+              }
+              
+              // Convert from database format to app format
+              const scheduleItem: DailyScheduleItem = {
+                id: item.id,
+                startTime: item.starttime,
+                endTime: item.endtime,
+                title: item.title,
+                description: item.description || '',
+                category: item.category || '',
+                dayOfWeek: item.dayofweek,
+                isRecurring: item.isrecurring || false,
+                color: item.color,
+              };
+              
+              schedule[dayName].push(scheduleItem);
+            });
+          }
+        });
+      }
       
       return schedule;
     } catch (error) {
@@ -246,24 +260,58 @@ export const scheduleService = {
 
   // Add schedule item
   addScheduleItem: async (userId: string, item: Omit<DailyScheduleItem, 'id'>) => {
+    // Convert from app format to database format
+    const itemToInsert = {
+      user_id: userId,
+      title: item.title,
+      description: item.description,
+      starttime: item.startTime,
+      endtime: item.endTime,
+      category: item.category,
+      dayofweek: item.dayOfWeek,
+      isrecurring: item.isRecurring,
+      color: item.color,
+    };
+
     const { data, error } = await supabase
       .from('schedule_items')
-      .insert({
-        ...item,
-        user_id: userId,
-      })
+      .insert(itemToInsert)
       .select()
       .single();
     
     if (error) throw new Error(error.message);
-    return data as DailyScheduleItem;
+    
+    // Convert from database format to app format
+    return {
+      id: data.id,
+      startTime: data.starttime,
+      endTime: data.endtime,
+      title: data.title,
+      description: data.description || '',
+      category: data.category || '',
+      dayOfWeek: data.dayofweek,
+      isRecurring: data.isrecurring || false,
+      color: data.color,
+    } as DailyScheduleItem;
   },
 
   // Update schedule item
   updateScheduleItem: async (itemId: string, updates: Partial<DailyScheduleItem>) => {
+    // Convert from app format to database format
+    const updatesToInsert: Record<string, any> = {};
+    
+    if (updates.title !== undefined) updatesToInsert.title = updates.title;
+    if (updates.description !== undefined) updatesToInsert.description = updates.description;
+    if (updates.startTime !== undefined) updatesToInsert.starttime = updates.startTime;
+    if (updates.endTime !== undefined) updatesToInsert.endtime = updates.endTime;
+    if (updates.category !== undefined) updatesToInsert.category = updates.category;
+    if (updates.dayOfWeek !== undefined) updatesToInsert.dayofweek = updates.dayOfWeek;
+    if (updates.isRecurring !== undefined) updatesToInsert.isrecurring = updates.isRecurring;
+    if (updates.color !== undefined) updatesToInsert.color = updates.color;
+
     const { error } = await supabase
       .from('schedule_items')
-      .update(updates)
+      .update(updatesToInsert)
       .eq('id', itemId);
     
     if (error) throw new Error(error.message);
