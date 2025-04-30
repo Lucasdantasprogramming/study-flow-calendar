@@ -37,7 +37,7 @@ interface TasksProviderProps {
 
 export const TasksProvider = ({ children }: TasksProviderProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { currentUser } = useAuth();
 
@@ -56,8 +56,8 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
         if (useMockData) {
           console.log('Using mock task data in development mode');
           setTasks(mockTasks);
-          // Importante: garantir que o loading seja finalizado mesmo com dados simulados
-          setTimeout(() => setLoading(false), 500);
+          // Guarantee that the loading state is properly reset even with mock data
+          setTimeout(() => setLoading(false), 300);
           return;
         }
         
@@ -68,7 +68,7 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
         console.error('Error loading tasks:', err);
         setError(err.message || 'Erro ao carregar tarefas');
         toast.error('Erro ao carregar tarefas');
-        // Importante: garantir que o loading seja finalizado mesmo com erro
+        // Guarantee that the loading state is properly reset even with error
         setLoading(false);
       }
     };
@@ -83,65 +83,83 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
     }
     
     try {
-      setLoading(true);
+      const tempId = `temp-${Date.now()}`;
+      
+      // Optimistic update
+      const tempTask: Task = {
+        id: tempId,
+        ...task
+      };
+      
+      setTasks((prev) => [...prev, tempTask]);
       
       if (useMockData) {
         // Generate a mock task with ID for development
-        const newTask: Task = {
-          id: `mock-${Date.now()}`,
-          ...task
-        };
-        setTasks((prev) => [...prev, newTask]);
         toast.success('Tarefa adicionada com sucesso!');
         return;
       }
       
       const newTask = await taskService.addTask(currentUser.id, task);
-      setTasks((prev) => [...prev, newTask]);
+      
+      // Replace temp task with real task from server
+      setTasks((prev) => prev.map(t => t.id === tempId ? newTask : t));
+      
       toast.success('Tarefa adicionada com sucesso!');
     } catch (err: any) {
       setError(err.message || 'Erro ao adicionar tarefa');
       toast.error(err.message || 'Erro ao adicionar tarefa');
-    } finally {
-      setLoading(false);
     }
   };
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
     try {
+      // Optimistic update
+      setTasks((prev) =>
+        prev.map((task) => (task.id === id ? { ...task, ...updates } : task))
+      );
+      
       if (useMockData) {
         // Update mock task in development mode
-        setTasks((prev) =>
-          prev.map((task) => (task.id === id ? { ...task, ...updates } : task))
-        );
         return;
       }
       
       await taskService.updateTask(id, updates);
-      setTasks((prev) =>
-        prev.map((task) => (task.id === id ? { ...task, ...updates } : task))
-      );
     } catch (err: any) {
+      // Revert optimistic update on error
       setError(err.message || 'Erro ao atualizar tarefa');
       toast.error(err.message || 'Erro ao atualizar tarefa');
+      
+      // Reload tasks if update fails to ensure UI is in sync with server
+      if (currentUser) {
+        const userTasks = await taskService.getTasks(currentUser.id);
+        setTasks(userTasks);
+      }
     }
   };
 
   const deleteTask = async (id: string) => {
     try {
+      // Optimistic update
+      setTasks((prev) => prev.filter((task) => task.id !== id));
+      
       if (useMockData) {
         // Delete mock task in development mode
-        setTasks((prev) => prev.filter((task) => task.id !== id));
         toast.success('Tarefa excluída com sucesso!');
         return;
       }
       
       await taskService.deleteTask(id);
-      setTasks((prev) => prev.filter((task) => task.id !== id));
       toast.success('Tarefa excluída com sucesso!');
     } catch (err: any) {
+      // Revert optimistic update on error
       setError(err.message || 'Erro ao excluir tarefa');
       toast.error(err.message || 'Erro ao excluir tarefa');
+      
+      // Reload tasks if delete fails to ensure UI is in sync with server
+      if (currentUser) {
+        const userTasks = await taskService.getTasks(currentUser.id);
+        setTasks(userTasks);
+      }
     }
   };
 
@@ -152,27 +170,31 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
     try {
       const updatedValue = !task.completed;
       
-      if (useMockData) {
-        // Update mock task completion status in development mode
-        setTasks((prev) =>
-          prev.map((task) =>
-            task.id === id ? { ...task, completed: updatedValue } : task
-          )
-        );
-        toast.success(updatedValue ? 'Tarefa concluída!' : 'Tarefa desmarcada como concluída.');
-        return;
-      }
-      
-      await taskService.updateTask(id, { completed: updatedValue });
+      // Optimistic update
       setTasks((prev) =>
         prev.map((task) =>
           task.id === id ? { ...task, completed: updatedValue } : task
         )
       );
+      
+      if (useMockData) {
+        // Update mock task completion status in development mode
+        toast.success(updatedValue ? 'Tarefa concluída!' : 'Tarefa desmarcada como concluída.');
+        return;
+      }
+      
+      await taskService.updateTask(id, { completed: updatedValue });
       toast.success(updatedValue ? 'Tarefa concluída!' : 'Tarefa desmarcada como concluída.');
     } catch (err: any) {
+      // Revert optimistic update on error
       setError(err.message || 'Erro ao atualizar tarefa');
       toast.error(err.message || 'Erro ao atualizar tarefa');
+      
+      // Reload tasks if update fails to ensure UI is in sync with server
+      if (currentUser) {
+        const userTasks = await taskService.getTasks(currentUser.id);
+        setTasks(userTasks);
+      }
     }
   };
 
@@ -185,29 +207,7 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
       const newDate = new Date(task.date);
       newDate.setDate(newDate.getDate() + 7);
       
-      if (useMockData) {
-        // Update mock task date in development mode
-        setTasks((prev) =>
-          prev.map((task) => {
-            if (task.id === id) {
-              return {
-                ...task,
-                date: newDate,
-                postponed: true,
-              };
-            }
-            return task;
-          })
-        );
-        toast.success('Tarefa adiada para a próxima semana.');
-        return;
-      }
-      
-      await taskService.updateTask(id, { 
-        date: newDate,
-        postponed: true 
-      });
-      
+      // Optimistic update
       setTasks((prev) =>
         prev.map((task) => {
           if (task.id === id) {
@@ -221,32 +221,56 @@ export const TasksProvider = ({ children }: TasksProviderProps) => {
         })
       );
       
+      if (useMockData) {
+        // Update mock task date in development mode
+        toast.success('Tarefa adiada para a próxima semana.');
+        return;
+      }
+      
+      await taskService.updateTask(id, { 
+        date: newDate,
+        postponed: true 
+      });
+      
       toast.success('Tarefa adiada para a próxima semana.');
     } catch (err: any) {
+      // Revert optimistic update on error
       setError(err.message || 'Erro ao adiar tarefa');
       toast.error(err.message || 'Erro ao adiar tarefa');
+      
+      // Reload tasks if update fails to ensure UI is in sync with server
+      if (currentUser) {
+        const userTasks = await taskService.getTasks(currentUser.id);
+        setTasks(userTasks);
+      }
     }
   };
 
   const updateTaskNotes = async (id: string, notes: string) => {
     try {
+      // Optimistic update
+      setTasks((prev) =>
+        prev.map((task) => (task.id === id ? { ...task, notes } : task))
+      );
+      
       if (useMockData) {
         // Update mock task notes in development mode
-        setTasks((prev) =>
-          prev.map((task) => (task.id === id ? { ...task, notes } : task))
-        );
         toast.success('Anotações salvas com sucesso!');
         return;
       }
       
       await taskService.updateTask(id, { notes });
-      setTasks((prev) =>
-        prev.map((task) => (task.id === id ? { ...task, notes } : task))
-      );
       toast.success('Anotações salvas com sucesso!');
     } catch (err: any) {
+      // Revert optimistic update on error
       setError(err.message || 'Erro ao salvar anotações');
       toast.error(err.message || 'Erro ao salvar anotações');
+      
+      // Reload tasks if update fails to ensure UI is in sync with server
+      if (currentUser) {
+        const userTasks = await taskService.getTasks(currentUser.id);
+        setTasks(userTasks);
+      }
     }
   };
 

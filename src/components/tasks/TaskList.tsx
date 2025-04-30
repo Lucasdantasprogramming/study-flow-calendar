@@ -88,6 +88,7 @@ export const TaskList = ({ selectedDate }: TaskListProps) => {
           <DialogContent className="sm:max-w-[500px]">
             <NewTaskForm
               initialDate={selectedDate}
+              onClose={() => setIsModalOpen(false)}
               onSuccess={() => setIsModalOpen(false)}
             />
           </DialogContent>

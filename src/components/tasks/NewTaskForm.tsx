@@ -16,10 +16,11 @@ import { CalendarIcon } from "lucide-react";
 
 interface NewTaskFormProps {
   onClose: () => void;
+  onSuccess?: () => void;
   initialDate?: Date;
 }
 
-export const NewTaskForm = ({ onClose, initialDate }: NewTaskFormProps) => {
+export const NewTaskForm = ({ onClose, onSuccess, initialDate }: NewTaskFormProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState<Date>(initialDate || new Date());
@@ -44,7 +45,11 @@ export const NewTaskForm = ({ onClose, initialDate }: NewTaskFormProps) => {
       duration,
     });
     
-    onClose();
+    if (onSuccess) {
+      onSuccess();
+    } else {
+      onClose();
+    }
   };
 
   return (
